@@ -1,24 +1,29 @@
-import React from 'react';
+import React, { useState } from "react";
+import LoginPage from "./pages/LoginPage";
+import Dashboard from "./pages/Dashboard";
+import AdminView from "./pages/AdminView";
+import SuperAdminSwitcher from "./components/SuperAdminSwitcher";
 
-const About = () => (
-  <div className="content-container">
-    <div className="content-title-group not-found">
-      <h2 className="title">Product Wish List</h2>
-      <p>
-        This project was created to help represent a fundamental app written
-        with React. The shopping theme is used throughout the app.
-      </p>
-      <br />
-      <h2 className="title">Resources</h2>
-      <ul>
-        <li>
-          <a href="https://github.com/MicrosoftDocs/mslearn-staticwebapp">
-            Code in GitHub
-          </a>
-        </li>
-      </ul>
+export default function App() {
+  const [user, setUser] = useState(null);
+  const [mode, setMode] = useState("user");
+
+  if (!user) return <LoginPage onLogin={setUser} />;
+
+  const renderView = () => {
+    if (user.role === "admin") return <AdminView />;
+    if (user.role === "superadmin") {
+      return mode === "admin" ? <AdminView /> : <Dashboard />;
+    }
+    return <Dashboard />;
+  };
+
+  return (
+    <div className="flex h-screen bg-slate-50">
+      {user.role === "superadmin" && (
+        <SuperAdminSwitcher mode={mode} setMode={setMode} />
+      )}
+      <div className="flex-1 overflow-y-auto">{renderView()}</div>
     </div>
-  </div>
-);
-
-export default About;
+  );
+}
