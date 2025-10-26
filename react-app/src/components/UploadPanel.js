@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { UploadCloud } from "lucide-react";
+import { UploadCloud, Trash2, FileText } from "lucide-react";
 
 export default function UploadPanel() {
   const [files, setFiles] = useState([]);
@@ -7,13 +7,34 @@ export default function UploadPanel() {
 
   const handleFiles = (e) => {
     const selected = Array.from(e.target.files);
-    setFiles(selected);
+    setFiles((prev) => [...prev, ...selected]);
     setUploaded(false);
+  };
+
+  const handleRemove = (index) => {
+    setFiles((prev) => prev.filter((_, i) => i !== index));
   };
 
   const handleUpload = () => {
     if (files.length === 0) return;
     setTimeout(() => setUploaded(true), 1000);
+  };
+
+  const getFileType = (name) => {
+    const ext = name.split(".").pop().toLowerCase();
+    switch (ext) {
+      case "pdf":
+        return "📘 PDF";
+      case "jpg":
+      case "jpeg":
+      case "png":
+        return "🖼 Image";
+      case "doc":
+      case "docx":
+        return "📄 Document";
+      default:
+        return "📁 File";
+    }
   };
 
   return (
@@ -37,15 +58,32 @@ export default function UploadPanel() {
       </div>
 
       {files.length > 0 && (
-        <div className="mt-6 space-y-2">
+        <div className="mt-6 space-y-3">
           {files.map((f, i) => (
-            <p key={i} className="text-slate-700 flex items-center gap-2">
-              📄 {f.name}
-            </p>
+            <div
+              key={i}
+              className="flex items-center justify-between bg-slate-50 border border-slate-200 px-4 py-2 rounded-lg"
+            >
+              <div className="flex items-center gap-3 truncate">
+                <FileText className="text-[#E15C31]" size={18} />
+                <div>
+                  <p className="font-medium text-slate-800 truncate">{f.name}</p>
+                  <p className="text-sm text-slate-500">{getFileType(f.name)}</p>
+                </div>
+              </div>
+              <button
+                onClick={() => handleRemove(i)}
+                className="text-red-500 hover:text-red-700 transition"
+                title="Remove"
+              >
+                <Trash2 size={18} />
+              </button>
+            </div>
           ))}
+
           <button
             onClick={handleUpload}
-            className="mt-4 bg-[#E15C31] text-white w-full py-3 rounded-lg hover:opacity-90"
+            className="mt-4 bg-[#E15C31] text-white w-full py-3 rounded-lg hover:opacity-90 transition"
           >
             Upload
           </button>
