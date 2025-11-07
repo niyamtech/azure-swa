@@ -1,3 +1,108 @@
+# React App — Mini Tax Accountant (Azure SWA / AZ-204 Learning)
+
+This repository contains a small React single-page application used as a mini project for a tax accountant. It's intentionally simple and intended to teach deploying apps to Azure Static Web Apps (SWA) using GitHub Actions as part of learning for AZ-204 topics.
+
+Key points:
+- Learning focus: deploying static front-ends to Azure Static Web Apps with GitHub Actions (useful for AZ-204 exam/practice).
+- App purpose: small UI for a tax accountant to upload documents, view a dashboard, and manage users/roles.
+- Simple role model: Admin, Accountant, Viewer.
+
+## Features (high level)
+- Dashboard with summary metrics
+- Upload page to submit tax documents (frontend only; may call an API in `api/` when present)
+- Admin pages to manage users and roles
+- Simple routing with React Router
+
+## User roles
+- Admin — full access, user/role management
+- Accountant — access to dashboard, uploads and client data
+- Viewer — read-only access to reports and summaries
+
+This project is a minimal UI prototype and may include placeholder/mock data. Adapt it to connect to real backends or APIs as needed.
+
+## Prerequisites
+- Node.js >= 18 and npm >= 9 (matches the project `engines` in `package.json`)
+- Git and a GitHub account (for GitHub Actions deployment)
+- An Azure subscription with permissions to create resources (Static Web App)
+
+## Quick start — run locally
+
+1. Install dependencies
+
+```bash
+cd react-app
+npm install
+```
+
+2. Start the dev server
+
+```bash
+npm start
+```
+
+The app runs on the default React dev server (usually http://localhost:3000). This project includes a `proxy` setting in `package.json` to forward API requests to `http://localhost:7071/` if you run a local Functions/API host.
+
+## Build
+
+```bash
+npm run build
+```
+
+This produces a production build in `build/` that can be served by a static host.
+
+## Deploying to Azure Static Web Apps with GitHub Actions
+
+This section outlines the typical flow to publish this app to Azure Static Web Apps using GitHub Actions. Azure provides a built-in GitHub Actions workflow that runs on push to a branch (commonly `main`).
+
+1. Create an Azure Static Web App in the Azure portal. When you create it, choose GitHub as the source and the repository/branch to deploy.
+
+2. Azure will add a GitHub Actions workflow to `.github/workflows/` in your repository (e.g. `azure-static-web-apps-<id>.yml`). That workflow will build and deploy your React app automatically.
+
+3. If you have an API (Azure Functions) in the repo, make sure the workflow is configured with the correct `app_location` (usually `/react-app`), `api_location` (e.g. `/api`), and `output_location` (`build`). The default `react-scripts` build output is `build`.
+
+Example workflow fields (these are configured by the portal when you create the SWA resource):
+
+```yaml
+app_location: "react-app"
+api_location: "api" # if you have one, otherwise set to ""
+output_location: "build"
+```
+
+4. Push to your configured branch. The GitHub Actions workflow will run and deploy the app.
+
+Notes and tips:
+- If your API is hosted separately (for example, an Azure Functions project under `api/` that uses `func host start` locally), ensure your local dev proxy matches and set environment variables in the workflow as needed.
+- For private settings (connection strings, tokens), use GitHub repository Secrets and consume them in the workflow. Do not store secrets in the repo.
+
+## Learning with AZ-204 in mind
+- Focus on the end-to-end flow: local app → build → GitHub Actions → Azure Static Web Apps.
+- Practice adding an Azure Function as an API backend and connecting it to the front end (HTTP triggers, authentication, CORS, environment variables).
+- Try adding role-based access (SWA supports authentication providers) and protecting admin routes.
+
+## Example: Add simple role checks (concept)
+- The frontend can show/hide UI elements based on the user's role. Roles can be stored in a user profile returned from the API or derived from JWT claims if you enable authentication.
+
+## Project layout (important files)
+- `react-app/package.json` — scripts and dependencies
+- `react-app/src/` — React source code and components
+- `react-app/public/` — static assets
+- (optional) `api/` — Azure Functions backend (if present)
+
+## Next steps / improvements
+- Add automated tests (unit / integration) and a CI job that runs them before deploy
+- Implement authentication and role-based authorization with Azure Static Web Apps built-in auth or Azure AD B2C
+- Wire up a persistent backend (Cosmos DB, SQL, or Blob Storage) and secure connection strings via Key Vault or GitHub Secrets
+
+## License
+This repository is provided for learning purposes. Use and adapt freely. No warranty.
+
+---
+
+If you want, I can also:
+- add a short GitHub Actions example workflow or a template for the SWA deploy
+- add sample environment variable names and a script to emulate a minimal API for local testing
+
+Path: `react-app/README.md`
 # Static Web App
 
 This project was created to help represent a fundamental app written with React. The shopping theme is used throughout the app.
