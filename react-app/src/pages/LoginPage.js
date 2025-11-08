@@ -7,7 +7,7 @@ const demoUsers = {
   user: { username: "user", password: "user", role: "user" },
 };
 
-const MFA_CODE = "all000000";
+const MFA_CODE = "000000";
 
 export default function LoginPage({ onLogin }) {
   const [step, setStep] = useState("choice");
@@ -61,7 +61,7 @@ export default function LoginPage({ onLogin }) {
   const handleMfaSubmit = (event) => {
     event.preventDefault();
     if (mfaCode.trim() !== MFA_CODE) {
-      setError("Incorrect multi-factor code. Enter all000000 to proceed.");
+      setError("Incorrect multi-factor code. Enter 000000 to proceed.");
       return;
     }
 
@@ -221,7 +221,7 @@ export default function LoginPage({ onLogin }) {
       <div className="space-y-2">
         <h3 className="text-lg font-semibold text-slate-900">Multi-factor check</h3>
         <p className="text-sm text-slate-600">
-          For the demo environment, enter <span className="font-semibold">all000000</span> to confirm your login.
+          For the demo environment, enter <span className="font-semibold">000000</span> to confirm your login.
         </p>
       </div>
       <input
