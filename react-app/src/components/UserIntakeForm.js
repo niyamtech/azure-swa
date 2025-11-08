@@ -3,9 +3,19 @@ import {
   AlertCircle,
   CheckCircle2,
   ClipboardList,
+  Loader2,
+  MapPin,
   Save,
   ShieldCheck,
 } from "lucide-react";
+import useDebouncedValue from "../hooks/useDebouncedValue";
+import { fetchAddressSuggestions } from "../services/addressLookup";
+import {
+  formatAbn,
+  formatTfn,
+  isValidAbn,
+  isValidTfn,
+} from "../utils/validateio";
 
 const STORAGE_KEY = "taxvault_intake_form";
 
@@ -51,7 +61,8 @@ const fieldGroups = [
       {
         name: "address",
         label: "Current Residential Address",
-        placeholder: "Unit 5, 21 Market Street, Perth WA 6000",
+        placeholder: "Start typing to search Australian addresses",
+        type: "address",
       },
     ],
   },
@@ -94,7 +105,7 @@ const initialState = fieldGroups
   .flatMap((group) => group.fields)
   .reduce((acc, field) => ({ ...acc, [field.name]: "" }), {});
 
-function FormInput({ field, value, onChange, error }) {
+function FormInput({ field, value, onChange, error, render }) {
   const { label, name, type = "text", placeholder, optional } = field;
 
   return (
@@ -105,14 +116,16 @@ function FormInput({ field, value, onChange, error }) {
           <span className="text-xs text-slate-400">Optional</span>
         ) : null}
       </div>
-      {type === "textarea" ? (
+      {render ? (
+        render({ value, onChange, placeholder, error })
+      ) : type === "textarea" ? (
         <textarea
           id={name}
           name={name}
           value={value}
           placeholder={placeholder}
           onChange={(e) => onChange(name, e.target.value)}
-          className={`w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#E15C31] ${
+          className={`w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0C6CF2] ${
             error ? "border-red-400" : "border-slate-300"
           }`}
           rows={4}
@@ -125,7 +138,7 @@ function FormInput({ field, value, onChange, error }) {
           value={value}
           placeholder={placeholder}
           onChange={(e) => onChange(name, e.target.value)}
-          className={`w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#E15C31] ${
+          className={`w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0C6CF2] ${
             error ? "border-red-400" : "border-slate-300"
           }`}
         />
@@ -144,6 +157,10 @@ export default function UserIntakeForm({ onStatusChange }) {
   const [errors, setErrors] = useState({});
   const [submitted, setSubmitted] = useState(false);
   const [lastSaved, setLastSaved] = useState(null);
+  const [addressQuery, setAddressQuery] = useState("");
+  const [addressSuggestions, setAddressSuggestions] = useState([]);
+  const [addressLoading, setAddressLoading] = useState(false);
+  const debouncedAddress = useDebouncedValue(addressQuery, 400);
 
   useEffect(() => {
     const stored = sessionStorage.getItem(STORAGE_KEY);
@@ -152,6 +169,7 @@ export default function UserIntakeForm({ onStatusChange }) {
       const parsed = JSON.parse(stored);
       if (parsed?.data) {
         setFormData({ ...initialState, ...parsed.data });
+        setAddressQuery(parsed.data?.address || "");
         setSubmitted(Boolean(parsed.submitted));
         setLastSaved(parsed.lastSaved || null);
         onStatusChange?.(Boolean(parsed.submitted));
@@ -193,12 +211,49 @@ export default function UserIntakeForm({ onStatusChange }) {
   const completionRate = Math.round((completedRequired / totalRequired) * 100);
 
   const handleChange = (name, value) => {
-    setFormData((prev) => ({ ...prev, [name]: value }));
+    let nextValue = value;
+
+    if (name === "tfn") {
+      nextValue = formatTfn(value);
+    }
+
+    if (name === "abn") {
+      nextValue = formatAbn(value);
+    }
+
+    if (name === "address") {
+      setAddressQuery(nextValue);
+    }
+
+    setFormData((prev) => ({ ...prev, [name]: nextValue }));
     setErrors((prev) => ({ ...prev, [name]: "" }));
     setSubmitted(false);
     setLastSaved(new Date().toISOString());
     onStatusChange?.(false);
   };
+
+  useEffect(() => {
+    let isMounted = true;
+
+    if (!debouncedAddress || debouncedAddress.trim().length < 4) {
+      setAddressSuggestions([]);
+      setAddressLoading(false);
+      return () => {
+        isMounted = false;
+      };
+    }
+
+    setAddressLoading(true);
+    fetchAddressSuggestions(debouncedAddress).then((results) => {
+      if (!isMounted) return;
+      setAddressSuggestions(results);
+      setAddressLoading(false);
+    });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [debouncedAddress]);
 
   const validate = () => {
     const nextErrors = {};
@@ -206,6 +261,14 @@ export default function UserIntakeForm({ onStatusChange }) {
       group.fields.forEach((field) => {
         if (!field.optional && !formData[field.name]) {
           nextErrors[field.name] = "This field is required.";
+        }
+
+        if (field.name === "tfn" && formData[field.name] && !isValidTfn(formData[field.name])) {
+          nextErrors[field.name] = "Enter a valid 8 or 9 digit TFN.";
+        }
+
+        if (field.name === "abn" && formData[field.name] && !isValidAbn(formData[field.name])) {
+          nextErrors[field.name] = "That ABN doesn’t pass the official checksum.";
         }
       });
     });
@@ -231,13 +294,16 @@ export default function UserIntakeForm({ onStatusChange }) {
     setErrors({});
     setSubmitted(false);
     setLastSaved(null);
+    setAddressQuery("");
+    setAddressSuggestions([]);
+    setAddressLoading(false);
     sessionStorage.removeItem(STORAGE_KEY);
     onStatusChange?.(false);
   };
 
   return (
-    <div className="bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden">
-      <div className="bg-gradient-to-r from-[#E15C31] to-orange-500 px-6 py-5 text-white flex items-center justify-between">
+    <div className="bg-white rounded-3xl border border-slate-200 shadow-soft-xl overflow-hidden">
+      <div className="bg-gradient-to-r from-[#0C6CF2] to-[#5C9CFF] px-6 py-5 text-white flex items-center justify-between">
         <div className="flex items-center gap-3">
           <ClipboardList size={26} />
           <div>
@@ -257,7 +323,7 @@ export default function UserIntakeForm({ onStatusChange }) {
 
       <form onSubmit={handleSubmit} className="p-6 space-y-6">
         <div className="flex flex-wrap items-center gap-3 bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm text-slate-600">
-          <ShieldCheck className="text-[#E15C31]" size={18} />
+          <ShieldCheck className="text-brand-primary" size={18} />
           <span>
             Your details are end-to-end encrypted. Only authorised agents with
             MFA can view or edit this information.
@@ -280,6 +346,47 @@ export default function UserIntakeForm({ onStatusChange }) {
                   value={formData[field.name]}
                   onChange={handleChange}
                   error={errors[field.name]}
+                  render={
+                    field.type === "address"
+                      ? ({ value, onChange: onValueChange, placeholder, error: fieldError }) => (
+                          <div className="relative">
+                            <input
+                              id={field.name}
+                              name={field.name}
+                              type="text"
+                              value={value}
+                              placeholder={placeholder}
+                              onChange={(event) =>
+                                onValueChange(field.name, event.target.value)
+                              }
+                              className={`w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0C6CF2] ${
+                                fieldError ? "border-red-400" : "border-slate-300"
+                              }`}
+                              autoComplete="off"
+                            />
+                            <div className="absolute inset-y-0 right-3 flex items-center text-slate-400">
+                              {addressLoading ? <Loader2 size={16} className="animate-spin" /> : <MapPin size={16} />}
+                            </div>
+                            {addressSuggestions.length > 0 && (
+                              <ul className="absolute z-10 mt-2 w-full max-h-48 overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-lg">
+                                {addressSuggestions.map((suggestion) => (
+                                  <li
+                                    key={suggestion.id}
+                                    className="px-3 py-2 text-sm text-slate-600 hover:bg-slate-50 cursor-pointer"
+                                    onMouseDown={() => {
+                                      onValueChange(field.name, suggestion.label);
+                                      setAddressSuggestions([]);
+                                    }}
+                                  >
+                                    {suggestion.label}
+                                  </li>
+                                ))}
+                              </ul>
+                            )}
+                          </div>
+                        )
+                      : undefined
+                  }
                 />
               ))}
             </div>
@@ -307,7 +414,7 @@ export default function UserIntakeForm({ onStatusChange }) {
             </button>
             <button
               type="submit"
-              className="px-4 py-2 text-sm font-semibold rounded-lg bg-[#E15C31] text-white hover:opacity-95 flex items-center gap-2"
+              className="px-4 py-2 text-sm font-semibold rounded-lg bg-[#0C6CF2] text-white hover:bg-[#0848A3] flex items-center gap-2 shadow-soft-xl"
             >
               <Save size={16} /> Save & Lock In Details
             </button>

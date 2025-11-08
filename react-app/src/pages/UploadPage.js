@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { UploadCloud, Trash2, FileText, LockKeyhole } from "lucide-react";
+import { UploadCloud, Trash2, FileText, LockKeyhole, ShieldCheck, Sparkles } from "lucide-react";
 import UserIntakeForm from "../components/UserIntakeForm";
 
 export default function UploadPage({ user }) {
@@ -63,14 +63,13 @@ export default function UploadPage({ user }) {
     <div className="space-y-8">
       <UserIntakeForm onStatusChange={setIntakeComplete} />
 
-      <div className="bg-white rounded-2xl shadow-xl border border-slate-200 p-8">
+      <div className="rounded-3xl border border-slate-200 bg-white p-8 shadow-soft-xl">
         <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between mb-6">
           <h2 className="text-xl font-semibold text-slate-800 flex items-center gap-2">
-            <UploadCloud className="text-[#E15C31]" /> Upload Documents
+            <UploadCloud className="text-brand-primary" /> Upload documents
           </h2>
           <span className="text-xs text-slate-500 flex items-center gap-2">
-            <LockKeyhole size={14} className="text-[#E15C31]" /> Uploads unlock
-            once your profile is completed.
+            <LockKeyhole size={14} className="text-brand-primary" /> Uploads unlock once your profile is completed.
           </span>
         </div>
 
@@ -81,7 +80,7 @@ export default function UploadPage({ user }) {
           <select
             value={docType}
             onChange={(e) => setDocType(e.target.value)}
-            className="w-full border border-slate-300 rounded-lg p-2 focus:ring-2 focus:ring-[#E15C31] focus:outline-none"
+            className="w-full rounded-2xl border border-slate-200 p-3 text-sm focus:border-brand-primary focus:outline-none focus:ring-2 focus:ring-brand-primary/30"
           >
             {taxDocTypes.map((t) => (
               <option key={t}>{t}</option>
@@ -92,7 +91,7 @@ export default function UploadPage({ user }) {
         <div
           className={`border-2 rounded-xl p-10 text-center transition ${
             intakeComplete
-              ? "border-dashed border-slate-300 hover:border-[#E15C31]"
+              ? "border-dashed border-brand-primary/40 bg-brand-primary/5 hover:border-brand-primary"
               : "border-slate-200 bg-slate-50"
           }`}
         >
@@ -115,7 +114,7 @@ export default function UploadPage({ user }) {
             {intakeComplete ? (
               <>
                 Drag & drop files here, or{" "}
-                <span className="text-[#E15C31] font-medium">browse</span>
+                <span className="font-medium text-brand-primary">browse</span>
               </>
             ) : (
               "Complete your tax profile above to enable uploads."
@@ -128,13 +127,13 @@ export default function UploadPage({ user }) {
             {files.map((f, i) => (
               <div
                 key={i}
-                className="flex items-center justify-between bg-slate-50 border border-slate-200 px-4 py-2 rounded-lg"
+                className="flex items-center justify-between rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3"
               >
                 <div className="flex items-center gap-3">
-                  <FileText className="text-[#E15C31]" size={18} />
+                  <FileText className="text-brand-primary" size={18} />
                   <div>
                     <p className="text-slate-800 font-medium truncate">{f.file.name}</p>
-                    <p className="text-sm text-slate-500">Type: {f.type}</p>
+                    <p className="text-xs text-slate-500">Type: {f.type}</p>
                   </div>
                 </div>
                 <button
@@ -149,21 +148,27 @@ export default function UploadPage({ user }) {
 
             <button
               onClick={handleUpload}
-              className={`mt-4 w-full py-3 rounded-lg font-medium transition ${
+              className={`mt-4 w-full rounded-2xl py-3 text-sm font-semibold transition ${
                 intakeComplete
-                  ? "bg-[#E15C31] text-white hover:opacity-90"
-                  : "bg-slate-200 text-slate-500 cursor-not-allowed"
+                  ? "bg-brand-gradient text-white shadow-soft-xl hover:brightness-105"
+                  : "cursor-not-allowed bg-slate-200 text-slate-500"
               }`}
               disabled={!intakeComplete}
             >
-              Upload
+              Upload securely
             </button>
           </div>
         )}
 
         {uploaded && (
-          <div className="mt-6 bg-green-100 border border-green-300 text-green-800 py-3 px-4 rounded-lg text-center">
-            ✅ Files uploaded successfully!
+          <div className="mt-6 flex items-center justify-between rounded-2xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
+            <span className="flex items-center gap-2">
+              <ShieldCheck size={18} />
+              Files uploaded successfully! Admins will review within 24 hours.
+            </span>
+            <span className="hidden text-xs text-slate-400 sm:inline-flex items-center gap-1">
+              <Sparkles size={14} /> AES-256 at rest
+            </span>
           </div>
         )}
       </div>
