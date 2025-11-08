@@ -1,199 +1,286 @@
 import React, { useState } from "react";
-import { CheckCircle, Lock, ShieldCheck, UserRound, Shield } from "lucide-react";
-import AuthIntegrationGuide from "../components/AuthIntegrationGuide";
 import logo from "../logo.svg";
 
-const users = {
+const demoUsers = {
   admin: { username: "admin", password: "admin", role: "admin" },
   superadmin: { username: "superadmin", password: "superadmin", role: "superadmin" },
   user: { username: "user", password: "user", role: "user" },
 };
 
-export default function LoginPage({ onLogin }) {
-  const [form, setForm] = useState({ username: "", password: "" });
-  const [error, setError] = useState("");
-  const [step, setStep] = useState("credentials");
-  const [mfaCode, setMfaCode] = useState("");
+const MFA_CODE = "all000000";
 
-  const handleSocialLogin = (provider) => {
-    const message =
-      provider === "microsoft"
-        ? "MSAL login will redirect to Microsoft 365 once configured in Azure AD."
-        : "Google accounts can federate through Azure AD External Identities.";
-    alert(message);
+export default function LoginPage({ onLogin }) {
+  const [step, setStep] = useState("choice");
+  const [returnStep, setReturnStep] = useState("choice");
+  const [loginForm, setLoginForm] = useState({ username: "", password: "" });
+  const [registerForm, setRegisterForm] = useState({ fullName: "", email: "", password: "" });
+  const [pendingUser, setPendingUser] = useState(null);
+  const [mfaCode, setMfaCode] = useState("");
+  const [error, setError] = useState("");
+
+  const goToStep = (nextStep) => {
+    setStep(nextStep);
+    setError("");
   };
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    const user = users[form.username];
-    if (!user || user.password !== form.password) {
-      setError("Invalid username or password");
+  const handleLoginSubmit = (event) => {
+    event.preventDefault();
+    const trimmedUsername = loginForm.username.trim();
+    const user = demoUsers[trimmedUsername];
+
+    if (!user || user.password !== loginForm.password.trim()) {
+      setError("Invalid username or password. Try the demo accounts below.");
       return;
     }
+
+    setPendingUser(user);
+    setReturnStep("login");
+    setMfaCode("");
     setError("");
     setStep("mfa");
   };
 
-  const handleMfa = (event) => {
+  const handleRegisterSubmit = (event) => {
     event.preventDefault();
-    if (mfaCode.trim() !== "123456") {
-      setError("The 6-digit code is incorrect. Check your authenticator app.");
+    const fullName = registerForm.fullName.trim();
+    const email = registerForm.email.trim();
+    const password = registerForm.password.trim();
+
+    if (!fullName || !email || !password) {
+      setError("Enter your full name, email, and a password to continue.");
       return;
     }
-    const user = users[form.username];
-    if (user) onLogin(user);
+
+    setPendingUser({ username: fullName || email, role: "user", email });
+    setReturnStep("register");
+    setMfaCode("");
+    setError("");
+    setStep("mfa");
   };
 
+  const handleMfaSubmit = (event) => {
+    event.preventDefault();
+    if (mfaCode.trim() !== MFA_CODE) {
+      setError("Incorrect multi-factor code. Enter all000000 to proceed.");
+      return;
+    }
+
+    if (pendingUser) {
+      onLogin(pendingUser);
+    } else {
+      setError("Start with login or registration first.");
+    }
+  };
+
+  const renderChoice = () => (
+    <div className="space-y-6">
+      <div className="space-y-2 text-center">
+        <h2 className="text-xl font-semibold text-slate-900">Welcome back</h2>
+        <p className="text-sm text-slate-600">
+          Choose how you would like to get started. The flow keeps things simple so you can plug in MSAL later.
+        </p>
+      </div>
+      <div className="grid gap-3">
+        <button
+          type="button"
+          onClick={() => goToStep("login")}
+          className="rounded-lg border border-slate-200 px-4 py-3 text-sm font-medium text-slate-900 transition hover:border-slate-400"
+        >
+          Sign in with an existing account
+        </button>
+        <button
+          type="button"
+          onClick={() => goToStep("register")}
+          className="rounded-lg border border-slate-200 px-4 py-3 text-sm font-medium text-slate-900 transition hover:border-slate-400"
+        >
+          Create a new account
+        </button>
+      </div>
+    </div>
+  );
+
+  const renderLogin = () => (
+    <form onSubmit={handleLoginSubmit} className="space-y-4">
+      <div className="space-y-1">
+        <label className="text-sm font-medium text-slate-900" htmlFor="username">
+          Username
+        </label>
+        <input
+          id="username"
+          type="text"
+          className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900/15"
+          value={loginForm.username}
+          onChange={(event) =>
+            setLoginForm((prev) => ({ ...prev, username: event.target.value }))
+          }
+          autoComplete="username"
+        />
+      </div>
+      <div className="space-y-1">
+        <label className="text-sm font-medium text-slate-900" htmlFor="password">
+          Password
+        </label>
+        <input
+          id="password"
+          type="password"
+          className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900/15"
+          value={loginForm.password}
+          onChange={(event) =>
+            setLoginForm((prev) => ({ ...prev, password: event.target.value }))
+          }
+          autoComplete="current-password"
+        />
+      </div>
+      {error && step === "login" && <p className="text-sm text-red-500">{error}</p>}
+      <div className="flex gap-3">
+        <button
+          type="button"
+          onClick={() => goToStep("choice")}
+          className="w-1/3 rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+        >
+          Back
+        </button>
+        <button
+          type="submit"
+          className="flex-1 rounded-lg bg-slate-900 px-3 py-2 text-sm font-semibold text-white hover:bg-slate-800"
+        >
+          Continue
+        </button>
+      </div>
+    </form>
+  );
+
+  const renderRegister = () => (
+    <form onSubmit={handleRegisterSubmit} className="space-y-4">
+      <div className="space-y-1">
+        <label className="text-sm font-medium text-slate-900" htmlFor="fullName">
+          Full name
+        </label>
+        <input
+          id="fullName"
+          type="text"
+          className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900/15"
+          value={registerForm.fullName}
+          onChange={(event) =>
+            setRegisterForm((prev) => ({ ...prev, fullName: event.target.value }))
+          }
+          autoComplete="name"
+        />
+      </div>
+      <div className="space-y-1">
+        <label className="text-sm font-medium text-slate-900" htmlFor="email">
+          Email
+        </label>
+        <input
+          id="email"
+          type="email"
+          className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900/15"
+          value={registerForm.email}
+          onChange={(event) =>
+            setRegisterForm((prev) => ({ ...prev, email: event.target.value }))
+          }
+          autoComplete="email"
+        />
+      </div>
+      <div className="space-y-1">
+        <label className="text-sm font-medium text-slate-900" htmlFor="new-password">
+          Create password
+        </label>
+        <input
+          id="new-password"
+          type="password"
+          className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900/15"
+          value={registerForm.password}
+          onChange={(event) =>
+            setRegisterForm((prev) => ({ ...prev, password: event.target.value }))
+          }
+          autoComplete="new-password"
+        />
+      </div>
+      {error && step === "register" && <p className="text-sm text-red-500">{error}</p>}
+      <div className="flex gap-3">
+        <button
+          type="button"
+          onClick={() => goToStep("choice")}
+          className="w-1/3 rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+        >
+          Back
+        </button>
+        <button
+          type="submit"
+          className="flex-1 rounded-lg bg-slate-900 px-3 py-2 text-sm font-semibold text-white hover:bg-slate-800"
+        >
+          Continue
+        </button>
+      </div>
+    </form>
+  );
+
+  const renderMfa = () => (
+    <form onSubmit={handleMfaSubmit} className="space-y-4">
+      <div className="space-y-2">
+        <h3 className="text-lg font-semibold text-slate-900">Multi-factor check</h3>
+        <p className="text-sm text-slate-600">
+          For the demo environment, enter <span className="font-semibold">all000000</span> to confirm your login.
+        </p>
+      </div>
+      <input
+        type="text"
+        inputMode="text"
+        maxLength={8}
+        placeholder="all000000"
+        className="w-full rounded-lg border border-slate-200 px-3 py-2 text-center text-sm tracking-[0.3em] focus:border-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900/15"
+        value={mfaCode}
+        onChange={(event) => setMfaCode(event.target.value)}
+      />
+      {error && step === "mfa" && <p className="text-sm text-red-500">{error}</p>}
+      <div className="flex gap-3">
+        <button
+          type="button"
+          onClick={() => {
+            setStep(returnStep);
+            setMfaCode("");
+            setError("");
+          }}
+          className="w-1/3 rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+        >
+          Back
+        </button>
+        <button
+          type="submit"
+          className="flex-1 rounded-lg bg-slate-900 px-3 py-2 text-sm font-semibold text-white hover:bg-slate-800"
+        >
+          Verify
+        </button>
+      </div>
+    </form>
+  );
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#F8FAFC] via-white to-[#DCE8FF] py-10">
-      <div className="mx-auto max-w-5xl px-4">
-        <header className="mb-8 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <img src={logo} alt="Aussie Tax Mate logo" className="h-12 w-12" />
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.3em] text-brand-primary">Aussie Tax Mate</p>
-              <h1 className="text-2xl font-semibold text-slate-900">Client security portal</h1>
-            </div>
+    <div className="min-h-screen bg-[#F8FAFC] px-4 py-12">
+      <div className="mx-auto w-full max-w-md space-y-6">
+        <header className="space-y-3 text-center">
+          <div className="flex justify-center">
+            <img src={logo} alt="Aussie Tax Mate" className="h-12 w-12" />
           </div>
-          <div className="hidden sm:flex items-center gap-2 rounded-full border border-brand-accent/40 bg-white px-4 py-2 text-xs text-slate-500">
-            <Shield size={16} className="text-brand-primary" /> Multi-factor login enforced
+          <div className="space-y-1">
+            <h1 className="text-2xl font-semibold text-slate-900">Client access</h1>
+            <p className="text-sm text-slate-600">
+              Minimal steps today. Swap in Microsoft Entra ID when you wire up MSAL.
+            </p>
           </div>
         </header>
 
-        <div className="grid gap-6 md:grid-cols-[1.15fr,0.85fr]">
-          <section className="rounded-3xl border border-slate-200 bg-white p-8 shadow-soft-xl">
-            <div className="mb-6 flex items-center gap-3">
-              <div className="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-brand-gradient text-white">
-                <UserRound size={22} />
-              </div>
-              <div>
-                <h2 className="text-xl font-semibold text-slate-900">Secure sign in</h2>
-                <p className="text-sm text-slate-500">
-                  Demo credentials first, then wire in Microsoft Entra ID when you are ready for production users.
-                </p>
-              </div>
-            </div>
+        <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+          {step === "choice" && renderChoice()}
+          {step === "login" && renderLogin()}
+          {step === "register" && renderRegister()}
+          {step === "mfa" && renderMfa()}
+        </section>
 
-            <div className="mb-5 grid gap-3">
-              <button
-                type="button"
-                onClick={() => handleSocialLogin("microsoft")}
-                className="flex items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 py-3 text-sm font-medium text-slate-600 hover:border-brand-primary hover:text-brand-primary"
-              >
-                <Lock size={16} /> Continue with Microsoft 365
-              </button>
-              <button
-                type="button"
-                onClick={() => handleSocialLogin("google")}
-                className="flex items-center justify-center gap-2 rounded-2xl border border-slate-200 py-3 text-sm font-medium text-slate-600 hover:border-brand-accent hover:text-brand-accent"
-              >
-                <CheckCircle size={16} /> Continue with Google (via Azure)
-              </button>
-            </div>
-
-            <div className="relative mb-6 flex items-center gap-2 text-xs uppercase tracking-[0.2em] text-slate-400">
-              <span className="flex-1 border-b border-slate-200" />
-              Or use the demo login
-              <span className="flex-1 border-b border-slate-200" />
-            </div>
-
-            {step === "credentials" ? (
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <input
-                  type="text"
-                  placeholder="Username"
-                  className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm focus:border-brand-primary focus:outline-none focus:ring-2 focus:ring-brand-primary/30"
-                  value={form.username}
-                  onChange={(e) => setForm({ ...form, username: e.target.value })}
-                />
-                <input
-                  type="password"
-                  placeholder="Password"
-                  className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm focus:border-brand-primary focus:outline-none focus:ring-2 focus:ring-brand-primary/30"
-                  value={form.password}
-                  onChange={(e) => setForm({ ...form, password: e.target.value })}
-                />
-                {error && <p className="text-sm text-red-500">{error}</p>}
-                <button
-                  type="submit"
-                  className="flex w-full items-center justify-center gap-2 rounded-2xl bg-brand-gradient py-3 text-sm font-semibold text-white shadow-soft-xl transition hover:brightness-105"
-                >
-                  <Lock size={16} /> Continue to MFA
-                </button>
-              </form>
-            ) : (
-              <form onSubmit={handleMfa} className="space-y-4">
-                <div className="flex items-start gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
-                  <ShieldCheck className="mt-0.5 text-brand-primary" size={18} />
-                  <p>
-                    Enter the 6-digit code from your authenticator app. This keeps client tax data locked, even if passwords are compromised.
-                  </p>
-                </div>
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  pattern="[0-9]*"
-                  maxLength={6}
-                  placeholder="6-digit code"
-                  className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-center text-lg tracking-[0.4em] focus:border-brand-primary focus:outline-none focus:ring-2 focus:ring-brand-primary/30"
-                  value={mfaCode}
-                  onChange={(e) => setMfaCode(e.target.value.replace(/[^0-9]/g, ""))}
-                />
-                {error && <p className="text-sm text-red-500">{error}</p>}
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setStep("credentials");
-                      setMfaCode("");
-                    }}
-                    className="w-1/3 rounded-2xl border border-slate-200 py-2 text-sm font-medium text-slate-500 hover:bg-slate-50"
-                  >
-                    Back
-                  </button>
-                  <button
-                    type="submit"
-                    className="flex-1 rounded-2xl bg-brand-gradient py-3 text-sm font-semibold text-white shadow-soft-xl transition hover:brightness-105 flex items-center justify-center gap-2"
-                  >
-                    <Lock size={16} /> Verify & Sign In
-                  </button>
-                </div>
-              </form>
-            )}
-
-            <p className="mt-6 text-center text-xs text-slate-500">
-              Demo users: <b>admin/admin</b>, <b>superadmin/superadmin</b>, <b>user/user</b>. MFA demo code: <b>123456</b>
-            </p>
-          </section>
-
-          <div>
-            <div className="rounded-3xl border border-brand-primary/30 bg-white p-6 shadow-soft-xl">
-              <h3 className="text-lg font-semibold text-slate-900">How Microsoft sign-in lands here</h3>
-              <ul className="mt-4 space-y-3 text-sm text-slate-600">
-                <li className="flex items-start gap-3">
-                  <span className="mt-1 inline-flex h-6 w-6 items-center justify-center rounded-full bg-brand-primary/10 text-xs font-semibold text-brand-primary">
-                    1
-                  </span>
-                  Register the SPA and API in Azure Active Directory (Entra ID). Enable Email OTP or Authenticator for MFA.
-                </li>
-                <li className="flex items-start gap-3">
-                  <span className="mt-1 inline-flex h-6 w-6 items-center justify-center rounded-full bg-brand-primary/10 text-xs font-semibold text-brand-primary">
-                    2
-                  </span>
-                  Use MSAL to request <code>User.Read</code> and custom scopes. Federation with Google allows @gmail.com users to sign in with the same flow.
-                </li>
-                <li className="flex items-start gap-3">
-                  <span className="mt-1 inline-flex h-6 w-6 items-center justify-center rounded-full bg-brand-primary/10 text-xs font-semibold text-brand-primary">
-                    3
-                  </span>
-                  Exchange the ID token with your Azure/.NET backend. Set a secure session cookie and keep sensitive data off the client.
-                </li>
-              </ul>
-            </div>
-
-            <AuthIntegrationGuide />
-          </div>
-        </div>
+        <footer className="text-center text-xs text-slate-500">
+          Demo users: <strong>admin/admin</strong>, <strong>superadmin/superadmin</strong>, <strong>user/user</strong>.
+        </footer>
       </div>
     </div>
   );
