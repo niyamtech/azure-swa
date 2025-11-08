@@ -162,3 +162,40 @@ This project was created to help represent a fundamental app written with React.
 - [Debugging Angular in VS Code](https://code.visualstudio.com/docs/nodejs/angular-tutorial?wt.mc_id=mslearn_staticwebapp-github-jopapa)
 - [Debugging React in VS Code](https://code.visualstudio.com/docs/nodejs/reactjs-tutorial?wt.mc_id=mslearn_staticwebapp-github-jopapa)
 - [Debugging Vue in VS Code](https://code.visualstudio.com/docs/nodejs/vuejs-tutorial?wt.mc_id=mslearn_staticwebapp-github-jopapa)
+
+## Authentication integration notes
+
+### Current demo flow
+- Landing screen lets you choose to sign in or create a lightweight account placeholder.
+- Demo credentials: `admin/admin`, `superadmin/superadmin`, `user/user`.
+- After credentials or registration details are entered, the MFA screen expects **all000000**.
+- Successful MFA stores the session in local storage so you can navigate between the client and admin views.
+
+### Wiring up Microsoft Entra ID (Azure AD) with MSAL
+1. **Create an app registration** in Azure Portal → Azure Active Directory → App registrations. Add localhost and production redirect URIs.
+2. **Configure MSAL** by installing `@azure/msal-browser`, then create an `msalInstance` with your tenant ID, client ID, and redirect URL. Enable Microsoft and Google ID providers if you want federated logins.
+3. **Wrap the app** with `MsalProvider` and call `instance.loginRedirect()` or `instance.loginPopup()` from the login choice screen. Request the scopes you need (e.g. `User.Read`).
+4. **Exchange the ID token** with your Azure/.NET backend after login and issue a secure session cookie. Keep sensitive tax data off the client and enforce MFA from Azure AD policies.
+
+```js
+import { PublicClientApplication } from "@azure/msal-browser";
+
+export const msalInstance = new PublicClientApplication({
+  auth: {
+    clientId: "<YOUR_CLIENT_ID>",
+    authority: "https://login.microsoftonline.com/<TENANT_ID>",
+    redirectUri: window.location.origin,
+  },
+  cache: {
+    cacheLocation: "sessionStorage",
+    storeAuthStateInCookie: false,
+  },
+});
+
+export const loginRequest = {
+  scopes: ["User.Read"],
+  prompt: "select_account",
+};
+```
+
+Once MSAL is in place, replace the demo handlers in `LoginPage.js` with `instance.loginRedirect(loginRequest)` and use `msalInstance.getActiveAccount()` to hydrate the session.
